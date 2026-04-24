@@ -1,0 +1,6 @@
+qa-screenshots/
+src/accounts.json
+src/accounts_geocoded.json
+src/geocode_cache.json
+src/__pycache__/
+geocode.log

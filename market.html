@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+   ______                            __
+  / ____/___  ____ ___  ____  __  __/ /____  _____
+ / /   / __ \/ __ `__ \/ __ \/ / / / __/ _ \/ ___/
+/ /___/ /_/ / / / / / / /_/ / /_/ / /_/  __/ /
+\____/\____/_/ /_/ /_/ .___/\__,_/\__/\___/_/
+                    /_/
+        Created with Perplexity Computer
+        https://www.perplexity.ai/computer
+-->
+<meta name="generator" content="Perplexity Computer">
+<meta name="author" content="Perplexity Computer">
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">Sophi Mobility — Market Map</title>
+
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="./style.css">
+</head>
+<body class="market-view">
+
+<header id="header">
+  <div class="header-left">
+    <a href="./index.html" class="back-link" aria-label="All markets">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </a>
+    <div class="logo">
+      <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="7" fill="#673AB7"/>
+        <path d="M8 10h5v12H8V10zm7 5h5v7h-5v-7z" fill="white"/>
+        <circle cx="25" cy="10" r="2.5" fill="#0F9D58"/>
+      </svg>
+    </div>
+    <div class="header-title">
+      <h1 id="market-name">—</h1>
+      <span class="header-subtitle" id="market-subtitle">Sophi Mobility · 2026 Market Analysis</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="stat-pill" id="stat-visible">
+      <span class="stat-num">0</span>
+      <span class="stat-label">visible</span>
+    </div>
+    <select id="market-switcher" class="market-switcher" aria-label="Switch market">
+      <!-- populated by JS -->
+    </select>
+  </div>
+</header>
+
+<aside id="sidebar">
+
+  <div class="sidebar-section summary-section">
+    <div class="summary-row">
+      <div class="summary-mini"><span class="smini-val" id="m-accounts">—</span><span class="smini-lbl">Accounts</span></div>
+      <div class="summary-mini"><span class="smini-val" id="m-tam">—</span><span class="smini-lbl">TAM</span></div>
+      <div class="summary-mini"><span class="smini-val" id="m-y5som">—</span><span class="smini-lbl">Y5 SOM</span></div>
+    </div>
+    <div class="state-badge" id="state-badge">—</div>
+  </div>
+
+  <div class="sidebar-section">
+    <h3>Priority Tier</h3>
+    <div id="tier-filters">
+      <label class="filter-item">
+        <input type="checkbox" checked data-tier="A">
+        <span class="tier-badge a">A</span>
+        <span class="filter-label">Beachhead</span>
+        <span class="filter-count" id="count-tier-A">—</span>
+      </label>
+      <label class="filter-item">
+        <input type="checkbox" checked data-tier="B">
+        <span class="tier-badge b">B</span>
+        <span class="filter-label">Core</span>
+        <span class="filter-count" id="count-tier-B">—</span>
+      </label>
+      <label class="filter-item">
+        <input type="checkbox" checked data-tier="C">
+        <span class="tier-badge c">C</span>
+        <span class="filter-label">Opportunistic</span>
+        <span class="filter-count" id="count-tier-C">—</span>
+      </label>
+      <label class="filter-item">
+        <input type="checkbox" checked data-tier="D">
+        <span class="tier-badge d">D</span>
+        <span class="filter-label">Deprioritized</span>
+        <span class="filter-count" id="count-tier-D">—</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <h3>Account Type</h3>
+    <div id="type-filters">
+      <!-- populated by JS -->
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <h3>Competitive Posture</h3>
+    <div id="posture-filters">
+      <label class="filter-item">
+        <input type="checkbox" checked data-posture="sophi">
+        <span class="posture-dot sophi"></span>
+        <span class="filter-label">SOPHI current</span>
+        <span class="filter-count" id="count-posture-sophi">—</span>
+      </label>
+      <label class="filter-item">
+        <input type="checkbox" checked data-posture="strong">
+        <span class="posture-dot strong"></span>
+        <span class="filter-label">Strong incumbent</span>
+        <span class="filter-count" id="count-posture-strong">—</span>
+      </label>
+      <label class="filter-item">
+        <input type="checkbox" checked data-posture="weak">
+        <span class="posture-dot weak"></span>
+        <span class="filter-label">Weak incumbent</span>
+        <span class="filter-count" id="count-posture-weak">—</span>
+      </label>
+      <label class="filter-item">
+        <input type="checkbox" checked data-posture="inhouse">
+        <span class="posture-dot inhouse"></span>
+        <span class="filter-label">In-house / self-op</span>
+        <span class="filter-count" id="count-posture-inhouse">—</span>
+      </label>
+      <label class="filter-item" id="unknown-op-filter">
+        <input type="checkbox" checked data-posture="unknown">
+        <span class="posture-dot unknown"></span>
+        <span class="filter-label">Unknown operator</span>
+        <span class="filter-count" id="count-posture-unknown">—</span>
+      </label>
+      <label class="filter-item">
+        <input type="checkbox" checked data-posture="greenfield">
+        <span class="posture-dot greenfield"></span>
+        <span class="filter-label">Greenfield (no valet)</span>
+        <span class="filter-count" id="count-posture-greenfield">—</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <h3>Search</h3>
+    <input type="text" id="search-input" placeholder="Name, address, operator, GM...">
+  </div>
+
+  <div class="sidebar-section">
+    <div class="legend-note">
+      <div class="legend-row"><span class="conf-dot v"></span>Verified location</div>
+      <div class="legend-row"><span class="conf-dot a"></span>Approximate (name-matched)</div>
+      <div class="legend-row"><span class="conf-dot f"></span>Market center fallback</div>
+    </div>
+  </div>
+
+</aside>
+
+<div id="map"></div>
+
+<div id="modal-overlay" class="modal-overlay hidden">
+  <div id="modal" class="modal">
+    <button id="modal-close" class="modal-close" aria-label="Close">&times;</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle filters">
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+</button>
+
+<script src="./data.js"></script>
+<script src="./market.js"></script>
+
+</body>
+</html>
