@@ -1,26 +1,27 @@
-/* Sophi Mobility v2 — landing page logic */
+/* Sophi Mobility v3 — landing page logic */
 (function() {
   const DATA = window.SOPHI_DATA;
   if (!DATA) { console.error('SOPHI_DATA missing'); return; }
 
   const MARKET_ORDER = ['charlotte', 'phoenix', 'denver', 'indianapolis', 'cleveland', 'louisville'];
 
-  // ---- Hero totals ---------------------------------------------------------
-  let totalAccts = 0, totalTAM = 0, totalSAM = 0, totalY5 = 0, totalInSAM = 0;
-  MARKET_ORDER.forEach(k => {
-    const m = DATA.markets[k];
-    totalAccts += m.summary.n_accounts;
-    totalTAM   += m.summary.tam;
-    totalSAM   += m.summary.sam;
-    totalY5    += m.summary.y5_som;
-    totalInSAM += m.summary.n_in_sam;
-  });
+  // ---- Hero totals (v3: read from portfolio block) -------------------------
+  const P = DATA.portfolio || {};
+  const sby = P.som_by_year || {};
+  const totalAccts = P.n_accounts || 0;
+  const totalInSAM = P.n_in_sam || 0;
+  const totalAcquired = P.n_acquired || 0;
+  const totalTAM = P.tam || 0;
+  const totalSAM = P.sam || 0;
+  const totalY1 = sby.y1 || 0;
+  const totalY5 = sby.y5 || 0;
+  const total5yr = P.som_5yr_cumulative || 0;
 
   const heroStats = [
-    { val: '$' + fmtM(totalTAM),         lbl: 'Portfolio TAM',  sub: '6 markets' },
-    { val: '$' + fmtM(totalSAM),         lbl: 'Addressable SAM', sub: pct(totalSAM, totalTAM) + ' of TAM' },
-    { val: '$' + fmtM(totalY5),          lbl: 'Y5 SOM',         sub: pct(totalY5, totalTAM) + ' of TAM' },
-    { val: fmtNum(totalAccts),           lbl: 'Accounts',       sub: totalInSAM + ' in SAM' },
+    { val: '$' + fmtM(totalTAM),  lbl: 'Portfolio TAM',  sub: '6 markets · ' + fmtNum(totalAccts) + ' accounts' },
+    { val: '$' + fmtM(totalSAM),  lbl: 'Addressable SAM', sub: pct(totalSAM, totalTAM) + ' of TAM · ' + totalInSAM + ' in SAM' },
+    { val: '$' + fmtM(totalY5),   lbl: 'Y5 Run-Rate SOM', sub: pct(totalY5, totalTAM) + ' of TAM' },
+    { val: '$' + fmtM(total5yr),  lbl: '5-Year Cumulative', sub: totalAcquired + ' accounts won by Y5' },
   ];
   document.getElementById('hero-stats').innerHTML = heroStats.map(s =>
     `<div class="hero-stat">
@@ -36,10 +37,16 @@
     const m = DATA.markets[key];
     const s = m.summary;
     const pc = m.pool_counts || {};
+    const cap = m.cap || 0.30;
+    const nAcquired = m.n_acquired || 0;
     const isWarm = s.state === 'WARM';
     const isV7 = key === 'indianapolis';
     const stateClass = isWarm ? 'warm' : 'cold';
     const stateLabel = isWarm ? 'Warm · 4 anchors' : (isV7 ? 'Cold · v7 hometown' : 'Cold start');
+    const capLabel = (cap * 100).toFixed(0) + '% cap';
+    const sby = s.som_by_year || {};
+    const y1som = sby.y1 || 0;
+    const y5som = sby.y5 || 0;
 
     // Pool composition bar (Anchor / Cold / M&A in-SAM | Partnership / Enterprise / Extended / Micro out)
     const inSamCount = (pc.anchor || 0) + (pc.cold_sam || 0) + (pc.ma_sam || 0);
@@ -91,12 +98,12 @@
             <div class="market-card-stat-lbl">TAM</div>
           </div>
           <div>
-            <div class="market-card-stat-val">$${fmtM(s.y5_som)}</div>
-            <div class="market-card-stat-lbl">Y5 SOM</div>
+            <div class="market-card-stat-val">$${fmtM(y5som)}</div>
+            <div class="market-card-stat-lbl">Y5 SOM · ${capLabel}</div>
           </div>
           <div>
-            <div class="market-card-stat-val">${(s.y5_tam_ratio * 100).toFixed(0)}%</div>
-            <div class="market-card-stat-lbl">Y5 / TAM</div>
+            <div class="market-card-stat-val">${nAcquired}</div>
+            <div class="market-card-stat-lbl">won by Y5</div>
           </div>
         </div>
 

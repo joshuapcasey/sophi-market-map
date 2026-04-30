@@ -1729,3 +1729,169 @@ body.market-view {
     padding: 20px;
   }
 }
+
+/* ============================================================
+   v3 — Acquisition Timeline (portfolio rollup)
+   ============================================================ */
+.acq-timeline {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 28px 20px;
+  margin-bottom: 16px;
+}
+.acq-cols {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  height: 240px;
+  align-items: end;
+}
+.acq-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  position: relative;
+}
+.acq-count {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+.acq-bar-wrap {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  position: relative;
+}
+.acq-bar {
+  width: 65%;
+  max-width: 72px;
+  display: flex;
+  flex-direction: column-reverse;
+  border-radius: 6px 6px 0 0;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: transform 200ms ease;
+  min-height: 2px;
+}
+.acq-col:hover .acq-bar { transform: translateY(-3px); }
+.acq-seg {
+  width: 100%;
+  transition: opacity 150ms ease;
+  border-bottom: 1px solid rgba(255,255,255,0.4);
+}
+.acq-seg:last-child { border-bottom: none; }
+.acq-seg:hover { opacity: 0.85; }
+.acq-lbl {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 10px;
+  letter-spacing: 0.04em;
+}
+.acq-sub {
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+.acq-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  justify-content: center;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.acq-foot-item {
+  font-size: 13px;
+  color: var(--text-2);
+  letter-spacing: 0.01em;
+}
+.acq-foot-item strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.acq-foot-item.muted { color: var(--text-3); }
+
+@media (max-width: 720px) {
+  .acq-cols { gap: 8px; height: 180px; }
+  .acq-bar { width: 80%; }
+  .acq-count { font-size: 16px; }
+  .acq-foot { gap: 12px; flex-direction: column; align-items: center; }
+}
+
+/* ============================================================
+   v3 — Modal lifecycle block
+   ============================================================ */
+.v3-acq-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(124,58,237,0.06), rgba(8,145,178,0.04));
+  border: 1px solid rgba(124,58,237,0.18);
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+.v3-acq-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.v3-acq-year {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.v3-acq-year.never {
+  color: var(--text-3);
+  font-style: italic;
+  font-weight: 600;
+}
+.v3-acq-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(124,58,237,0.12);
+  color: #5b21b6;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.v3-acq-pill.gated {
+  background: rgba(220,38,38,0.10);
+  color: #b91c1c;
+}
+.v3-acq-pill.anchor {
+  background: rgba(8,145,178,0.12);
+  color: #0e7490;
+}
+.v3-acq-pill.deferred {
+  background: rgba(245,158,11,0.12);
+  color: #b45309;
+}
+.v3-acq-detail {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.v3-acq-detail strong { color: var(--text); }
+.trajectory-col.acquired .trajectory-bar { background: var(--accent, #7C3AED); }
+.trajectory-col.pre-acq .trajectory-bar {
+  background: repeating-linear-gradient(45deg,
+    rgba(148,163,184,0.25), rgba(148,163,184,0.25) 4px,
+    rgba(148,163,184,0.10) 4px, rgba(148,163,184,0.10) 8px);
+}

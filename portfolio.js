@@ -1,4 +1,4 @@
-/* Sophi Mobility v2 — Portfolio Financial Rollup */
+/* Sophi Mobility v3 — Portfolio Financial Rollup */
 (function() {
   const DATA = window.SOPHI_DATA;
   if (!DATA) { console.error('SOPHI_DATA missing'); return; }
@@ -18,21 +18,27 @@
     louisville:   '#2563EB'  // blue
   };
   const POOL_LABEL = {
-    anchor:'Anchor', cold_sam:'Cold SAM', ma_sam:'M&A SAM (Indy v7)'
+    anchor:'Anchor (SOPHI-already)', cold_sam:'Cold SAM', ma_sam:'M&A SAM (Indy v7)'
   };
   const POOL_COLOR = {
     anchor:'#7C3AED', cold_sam:'#0891B2', ma_sam:'#D97706'
   };
 
   // ---- Compute rollup from accounts ---------------------------------------
-  const portfolio = { y1:0,y2:0,y3:0,y4:0,y5:0, tam:0, sam:0, n_accounts:0, n_in_sam:0 };
+  const portfolio = { y1:0,y2:0,y3:0,y4:0,y5:0, tam:0, sam:0, n_accounts:0, n_in_sam:0, n_acquired:0 };
   const byMarket = {};
   const byPool = { anchor:{y1:0,y2:0,y3:0,y4:0,y5:0}, cold_sam:{y1:0,y2:0,y3:0,y4:0,y5:0}, ma_sam:{y1:0,y2:0,y3:0,y4:0,y5:0} };
+  // Acquisitions per year (count of accounts whose acquisition_year === y)
+  const acqByYear = { 1:0, 2:0, 3:0, 4:0, 5:0, never:0 };
+  const acqByYearByMarket = {}; // mk -> {1:n, 2:n, ...}
 
   MARKET_ORDER.forEach(mk => {
     const m = DATA.markets[mk];
     const s = m.summary;
-    const row = { y1:0,y2:0,y3:0,y4:0,y5:0, tam:s.tam, sam:s.sam, n_accounts:s.n_accounts, n_in_sam:s.n_in_sam, state:s.state };
+    const cap = m.cap || null;
+    const nAcquired = m.n_acquired || 0;
+    const row = { y1:0,y2:0,y3:0,y4:0,y5:0, tam:s.tam, sam:s.sam, n_accounts:s.n_accounts, n_in_sam:s.n_in_sam, n_acquired:nAcquired, cap, state:s.state };
+    acqByYearByMarket[mk] = { 1:0, 2:0, 3:0, 4:0, 5:0, never:0 };
     m.accounts.forEach(a => {
       for (let i=1;i<=5;i++){
         const v = +a['y'+i] || 0;
@@ -40,12 +46,24 @@
         portfolio['y'+i] += v;
         if (byPool[a.pool]) byPool[a.pool]['y'+i] += v;
       }
+      // Count acquisition events (only in-SAM accounts can be acquired)
+      if (a.in_sam) {
+        const ay = a.acquisition_year;
+        if (ay && ay >= 1 && ay <= 5) {
+          acqByYear[ay] += 1;
+          acqByYearByMarket[mk][ay] += 1;
+        } else {
+          acqByYear.never += 1;
+          acqByYearByMarket[mk].never += 1;
+        }
+      }
     });
     byMarket[mk] = row;
     portfolio.tam += s.tam;
     portfolio.sam += s.sam;
     portfolio.n_accounts += s.n_accounts;
     portfolio.n_in_sam += s.n_in_sam;
+    portfolio.n_acquired += nAcquired;
   });
 
   const fiveYrTotal = portfolio.y1 + portfolio.y2 + portfolio.y3 + portfolio.y4 + portfolio.y5;
@@ -57,11 +75,12 @@
   const fmtPct = (n,d) => d ? (n/d*100).toFixed(0)+'%' : '0%';
 
   // ---- Hero stats ----------------------------------------------------------
+  const y1y5Mult = portfolio.y1 > 0 ? (portfolio.y5/portfolio.y1).toFixed(1) + '×' : '—';
   const heroStats = [
-    { val: fmtM(fiveYrTotal),       lbl: '5-Year Cumulative SOM',  sub: 'across 6 markets' },
+    { val: fmtM(fiveYrTotal),       lbl: '5-Year Cumulative SOM',  sub: portfolio.n_acquired + ' of ' + portfolio.n_in_sam + ' in-SAM accounts won' },
     { val: fmtM(portfolio.y5),      lbl: 'Y5 Run-Rate SOM',        sub: fmtPct(portfolio.y5, portfolio.tam) + ' of TAM' },
-    { val: fmtM(portfolio.y1),      lbl: 'Y1 SOM',                 sub: 'first-year contracted' },
-    { val: ((portfolio.y5/portfolio.y1)).toFixed(1) + '×', lbl: 'Y1→Y5 Multiple', sub: 'portfolio ramp' },
+    { val: fmtM(portfolio.y1),      lbl: 'Y1 SOM',                 sub: 'standing-start year one' },
+    { val: y1y5Mult,                lbl: 'Y1→Y5 Multiple',         sub: 'portfolio ramp' },
   ];
   document.getElementById('rollup-hero-stats').innerHTML = heroStats.map(s =>
     `<div class="hero-stat">
@@ -121,6 +140,46 @@
     </div>`;
   }).join('');
 
+  // ---- Acquisition Timeline -----------------------------------------------
+  const acqEl = document.getElementById('acq-timeline');
+  if (acqEl) {
+    const maxYearAcq = Math.max(acqByYear[1], acqByYear[2], acqByYear[3], acqByYear[4], acqByYear[5], 1);
+    const yearTotalAcc = [acqByYear[1], acqByYear[1]+acqByYear[2], acqByYear[1]+acqByYear[2]+acqByYear[3],
+                          acqByYear[1]+acqByYear[2]+acqByYear[3]+acqByYear[4],
+                          portfolio.n_acquired];
+    let acqHTML = '<div class="acq-cols">';
+    for (let yr = 1; yr <= 5; yr++) {
+      const n = acqByYear[yr];
+      const h = (n / maxYearAcq) * 100;
+      // Per-market segments stacked
+      let segs = '';
+      MARKET_ORDER.forEach(mk => {
+        const c = acqByYearByMarket[mk][yr];
+        if (c <= 0 || n <= 0) return;
+        const segPct = (c / n) * 100;
+        segs += `<div class="acq-seg" style="height:${segPct}%;background:${MARKET_COLOR[mk]};" title="${MARKET_LABEL[mk]} Y${yr}: ${c} won"></div>`;
+      });
+      acqHTML += `
+        <div class="acq-col">
+          <div class="acq-count">${n}</div>
+          <div class="acq-bar-wrap">
+            <div class="acq-bar" style="height:${h}%;">${segs}</div>
+          </div>
+          <div class="acq-lbl">Y${yr}</div>
+          <div class="acq-sub">${yearTotalAcc[yr-1]} cumulative</div>
+        </div>`;
+    }
+    acqHTML += '</div>';
+    // Legend
+    acqHTML += '<div class="acq-foot">';
+    acqHTML += `<span class="acq-foot-item"><strong>${portfolio.n_acquired}</strong> won by Y5 of <strong>${portfolio.n_in_sam}</strong> in-SAM accounts (${fmtPct(portfolio.n_acquired, portfolio.n_in_sam)})</span>`;
+    if (acqByYear.never > 0) {
+      acqHTML += `<span class="acq-foot-item muted"><strong>${acqByYear.never}</strong> remain unacquired by Y5 (gated, sub-cap, or cap-deferred)</span>`;
+    }
+    acqHTML += '</div>';
+    acqEl.innerHTML = acqHTML;
+  }
+
   // ---- 5-Year Cumulative list (horizontal bars) ---------------------------
   const cumulList = document.getElementById('cumulative-list');
   const marketTotals = MARKET_ORDER.map(mk => ({
@@ -176,16 +235,17 @@
     const r = byMarket[mk];
     const five = r.y1+r.y2+r.y3+r.y4+r.y5;
     const stateLbl = r.state === 'WARM' ? 'Warm' : 'Cold';
+    const capLbl = r.cap ? (r.cap*100).toFixed(0)+'%' : '—';
     return `<tr onclick="window.location.href='./market.html?m=${mk}'">
       <td class="t-left"><a href="./market.html?m=${mk}">${MARKET_LABEL[mk]}</a></td>
       <td><span class="state-pill ${r.state.toLowerCase()}">${stateLbl}</span></td>
+      <td class="t-right">${capLbl}</td>
       <td class="t-right">${fmtM(r.tam)}</td>
       <td class="t-right">${fmtM(r.sam)}</td>
       <td class="t-right">${fmtM(r.y1)}</td>
       <td class="t-right strong">${fmtM(r.y5)}</td>
       <td class="t-right strong">${fmtM(five)}</td>
-      <td class="t-right">${r.n_accounts}</td>
-      <td class="t-right">${r.n_in_sam}</td>
+      <td class="t-right">${r.n_acquired}/${r.n_in_sam}</td>
     </tr>`;
   }).join('');
 
@@ -193,13 +253,13 @@
   tfoot.innerHTML = `<tr class="totals-row">
     <td class="t-left">Portfolio</td>
     <td>—</td>
+    <td>—</td>
     <td class="t-right">${fmtM(portfolio.tam)}</td>
     <td class="t-right">${fmtM(portfolio.sam)}</td>
     <td class="t-right">${fmtM(portfolio.y1)}</td>
     <td class="t-right strong">${fmtM(portfolio.y5)}</td>
     <td class="t-right strong">${fmtM(fiveYrTotal)}</td>
-    <td class="t-right">${portfolio.n_accounts}</td>
-    <td class="t-right">${portfolio.n_in_sam}</td>
+    <td class="t-right">${portfolio.n_acquired}/${portfolio.n_in_sam}</td>
   </tr>`;
 
 })();

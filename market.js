@@ -1,4 +1,4 @@
-/* Sophi Mobility — market view (v2 methodology) */
+/* Sophi Mobility — market view (v3 penetration engine) */
 (function() {
   'use strict';
   const DATA = window.SOPHI_DATA;
@@ -50,15 +50,19 @@
   document.getElementById('m-insam').textContent = summary.n_in_sam;
   document.getElementById('m-y1som').textContent = '$' + fmtM(summary.y1_som);
 
+  // v3: market cap badge
+  const cap = market.cap;
+  const nAcquired = market.n_acquired || 0;
   const stateBadge = document.getElementById('state-badge');
+  const capLabel = cap ? ` · ${(cap*100).toFixed(0)}% Y5 cap` : '';
   if (summary.state === 'WARM') {
-    stateBadge.textContent = 'Warm · 4 Charlotte anchors';
+    stateBadge.textContent = `Warm · 4 Charlotte anchors${capLabel}`;
     stateBadge.className = 'state-badge warm';
   } else if (mKey === 'indianapolis') {
-    stateBadge.textContent = 'Cold · v7 hometown advantage';
+    stateBadge.textContent = `Cold · v7 hometown advantage${capLabel}`;
     stateBadge.className = 'state-badge cold v7';
   } else {
-    stateBadge.textContent = 'Cold start market';
+    stateBadge.textContent = `Cold start${capLabel}`;
     stateBadge.className = 'state-badge cold';
   }
 
@@ -75,7 +79,8 @@
   // ---- Derive search text for every account -----------------------------
   accounts.forEach(a => {
     a._search = [a.name, a.address, a.valet_operator, a.garage_operator,
-                 a.management, a.gm, a.type, a.pool_raw, a.tam_class]
+                 a.management, a.gm, a.type, a.pool_raw, a.tam_class,
+                 a.gate_status, a.group_key]
                  .filter(Boolean).join(' ').toLowerCase();
   });
 
@@ -268,13 +273,14 @@
 
         ${a.in_sam ? `
         <div class="modal-group">
-          <div class="modal-group-title">SAM contribution &amp; Y1–Y5 trajectory</div>
+          <div class="modal-group-title">v3 lifecycle — acquisition &amp; trajectory</div>
+          ${renderV3LifecycleBlock(a)}
           ${trajectoryHtml}
           <div class="modal-fields modal-fields-tight">
+            <div class="modal-field"><span class="modal-field-lbl">Annual TAM (post-acq)</span><span class="modal-field-val">${fmtVal(a.tam, v => '$' + fmtM(v))}</span></div>
             <div class="modal-field"><span class="modal-field-lbl">SAM contribution</span><span class="modal-field-val">${fmtVal(a.sam_contrib, v => '$' + fmtM(v))}</span></div>
-            <div class="modal-field"><span class="modal-field-lbl">Curve</span><span class="modal-field-val">${fmtVal(a.curve)}</span></div>
-            <div class="modal-field"><span class="modal-field-lbl">Sign year</span><span class="modal-field-val">${fmtVal(a.sign_yr)}</span></div>
-            <div class="modal-field"><span class="modal-field-lbl">Y5 / TAM</span><span class="modal-field-val">${a.tam ? ((a.y5/a.tam)*100).toFixed(0) + '%' : '—'}</span></div>
+            <div class="modal-field"><span class="modal-field-lbl">Ownership group</span><span class="modal-field-val">${fmtVal(a.group_key, v => v.replace(/_/g,' '))}</span></div>
+            <div class="modal-field"><span class="modal-field-lbl">Group wins at acq.</span><span class="modal-field-val">${a.acquisition_year ? (a.group_wins_at_acquisition ?? 0) : '—'}</span></div>
           </div>
         </div>
         ` : `
@@ -348,17 +354,79 @@
   function renderTrajectory(a) {
     const years = [a.y1, a.y2, a.y3, a.y4, a.y5].map(v => Number(v) || 0);
     const max = Math.max(...years, a.tam || 0, 1);
+    const acqYr = a.acquisition_year;
     return `
       <div class="trajectory">
-        ${years.map((v, i) => `
-          <div class="trajectory-col">
+        ${years.map((v, i) => {
+          const yr = i + 1;
+          const isAcquired = acqYr && yr >= acqYr;
+          const cls = isAcquired ? 'acquired' : 'pre-acq';
+          const minH = v > 0 ? 0 : 2; // sliver for pre-acq years so pattern is visible
+          const barH = v > 0 ? (v / max) * 100 : minH;
+          return `
+          <div class="trajectory-col ${cls}">
             <div class="trajectory-bar-wrap">
-              <div class="trajectory-bar" style="height: ${(v/max)*100}%"></div>
+              <div class="trajectory-bar" style="height: ${barH}%"></div>
             </div>
-            <div class="trajectory-val">$${fmtM(v)}</div>
-            <div class="trajectory-lbl">Y${i+1}</div>
-          </div>
-        `).join('')}
+            <div class="trajectory-val">${v > 0 ? '$'+fmtM(v) : '—'}</div>
+            <div class="trajectory-lbl">Y${yr}${acqYr === yr ? ' ★' : ''}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  function renderV3LifecycleBlock(a) {
+    const ay = a.acquisition_year;
+    const gs = a.gate_status || '';
+    const gsLow = gs.toLowerCase();
+    let pillCls = '';
+    let pillTxt = '';
+    let yearTxt = '';
+    if (ay) {
+      yearTxt = `Acquired Y${ay}`;
+      if (gsLow.startsWith('anchor:')) {
+        pillCls = 'anchor';
+        pillTxt = 'SOPHI Anchor';
+      } else if (gsLow.startsWith('v7_hometown')) {
+        pillCls = 'anchor';
+        pillTxt = 'v7 Hometown';
+      } else if (gsLow.startsWith('v7_ma_absorption')) {
+        pillCls = 'anchor';
+        pillTxt = 'v7 M&A Absorption';
+      } else {
+        pillTxt = 'Won via gate + cap';
+      }
+    } else {
+      yearTxt = 'Not acquired by Y5';
+      if (gsLow.startsWith('gated:')) {
+        pillCls = 'gated';
+        pillTxt = 'Operator-gated';
+      } else if (gsLow.includes('cap-deferred')) {
+        pillCls = 'deferred';
+        pillTxt = 'Cap-deferred';
+      } else if (gsLow.startsWith('in-pool')) {
+        pillCls = 'deferred';
+        pillTxt = 'Below cap line';
+      } else {
+        pillCls = 'deferred';
+        pillTxt = 'Outside 5-yr window';
+      }
+    }
+    const detailLines = [];
+    if (gs) detailLines.push(escHtml(gs));
+    if (a.operator_gate) detailLines.push(`Operator gate: <strong>${escHtml(a.operator_gate)}</strong>`);
+    if (ay && a.group_wins_at_acquisition != null && a.group_wins_at_acquisition > 0) {
+      const m = a.group_wins_at_acquisition >= 3 ? '3×' : (a.group_wins_at_acquisition === 2 ? '2×' : '1.5×');
+      detailLines.push(`Sister-property wins at acquisition: <strong>${a.group_wins_at_acquisition}</strong> (relationship multiplier ${m})`);
+    }
+    return `
+      <div class="v3-acq-block">
+        <div class="v3-acq-head">
+          <span class="v3-acq-year ${ay ? '' : 'never'}">${yearTxt}</span>
+          ${pillTxt ? `<span class="v3-acq-pill ${pillCls}">${pillTxt}</span>` : ''}
+        </div>
+        ${detailLines.length ? `<div class="v3-acq-detail">${detailLines.join(' · ')}</div>` : ''}
       </div>
     `;
   }
