@@ -1,30 +1,66 @@
-/* Sophi Mobility — market view logic */
+/* Sophi Mobility — market view (v2 methodology) */
 (function() {
   'use strict';
   const DATA = window.SOPHI_DATA;
   if (!DATA) { console.error('SOPHI_DATA missing'); return; }
 
-  const MARKET_ORDER = ['denver', 'charlotte', 'indianapolis', 'phoenix', 'cleveland', 'louisville'];
+  const MARKET_ORDER = ['charlotte', 'phoenix', 'denver', 'indianapolis', 'cleveland', 'louisville'];
+
+  const POOL_LABEL = {
+    anchor:        'Anchor',
+    cold_sam:      'Cold SAM',
+    ma_sam:        'M&A SAM',
+    partnership:   'Partnership / PMC',
+    enterprise:    'Enterprise operator',
+    extended_stay: 'Extended-stay brand',
+    micro:         'Micro (<$150K TAM)',
+  };
+  const IN_SAM_POOLS = new Set(['anchor', 'cold_sam', 'ma_sam']);
+
+  const V7_LABEL = {
+    hometown_displaced:  { label: 'Indy v7 — Hometown Displaced', cls: 'positive', detail: 'Re-classified into Cold SAM via hometown advantage (Denison/Severin legacy + co-located dependency).' },
+    hometown_was_boost:  { label: 'Indy v7 — Hometown +0.5 WAS', cls: 'positive', detail: 'Denison-era goodwill applies a +0.5 WAS lift on this account.' },
+    ma_absorption:       { label: 'Indy v7 — M&A Absorption',   cls: 'neutral',  detail: 'Carry-in revenue from acquired hometown operator (Denison roll-in). $0.95M/yr Y2-Y5 portfolio contribution.' },
+  };
 
   // ---- Resolve active market from ?m= query param -------------------------
   const params = new URLSearchParams(location.search);
-  let mKey = (params.get('m') || 'denver').toLowerCase();
-  if (!DATA.markets[mKey]) mKey = 'denver';
+  let mKey = (params.get('m') || 'charlotte').toLowerCase();
+  if (!DATA.markets[mKey]) mKey = 'charlotte';
   const market = DATA.markets[mKey];
   const accounts = market.accounts;
+  const summary = market.summary;
 
   // ---- Header / summary ---------------------------------------------------
   document.title = `${market.name} — Sophi Mobility Market Map`;
   document.getElementById('page-title').textContent = `${market.name} — Sophi Mobility`;
   document.getElementById('market-name').textContent = market.name;
-  document.getElementById('market-subtitle').textContent = `Sophi Mobility · ${accounts.length} accounts`;
+  document.getElementById('market-subtitle').textContent =
+    `Sophi Mobility · ${summary.n_accounts} accounts · ${summary.n_in_sam} in SAM`;
 
-  document.getElementById('m-accounts').textContent = accounts.length;
-  document.getElementById('m-tam').textContent = '$' + fmtM(market.summary.tam);
-  document.getElementById('m-y5som').textContent = '$' + fmtM(market.summary.y5_som);
+  document.getElementById('h-tam').textContent = '$' + fmtM(summary.tam);
+  document.getElementById('h-sam').textContent = '$' + fmtM(summary.sam);
+  document.getElementById('h-sam-ratio').textContent =
+    `(${(summary.sam_tam_ratio * 100).toFixed(0)}% of TAM)`;
+  document.getElementById('h-y5').textContent = '$' + fmtM(summary.y5_som);
+  document.getElementById('h-y5-ratio').textContent =
+    `(${(summary.y5_tam_ratio * 100).toFixed(0)}% of TAM)`;
+
+  document.getElementById('m-accounts').textContent = summary.n_accounts;
+  document.getElementById('m-insam').textContent = summary.n_in_sam;
+  document.getElementById('m-y1som').textContent = '$' + fmtM(summary.y1_som);
+
   const stateBadge = document.getElementById('state-badge');
-  stateBadge.textContent = market.summary.state === 'WARM' ? 'Warm · 4 SOPHI anchors' : 'Cold start market';
-  stateBadge.className = 'state-badge ' + market.summary.state.toLowerCase();
+  if (summary.state === 'WARM') {
+    stateBadge.textContent = 'Warm · 4 Charlotte anchors';
+    stateBadge.className = 'state-badge warm';
+  } else if (mKey === 'indianapolis') {
+    stateBadge.textContent = 'Cold · v7 hometown advantage';
+    stateBadge.className = 'state-badge cold v7';
+  } else {
+    stateBadge.textContent = 'Cold start market';
+    stateBadge.className = 'state-badge cold';
+  }
 
   // Market switcher
   const sw = document.getElementById('market-switcher');
@@ -36,48 +72,11 @@
     location.href = `./market.html?m=${e.target.value}`;
   });
 
-  // ---- Derive posture & search text for every account --------------------
-  const STRONG_OPS = ['towne park','laz','sp+','sp plus','propark','abm'];
-  const WEAK_OPS   = ['park inc','pmc','preferred','premium','pro park','propark valet','epic'];
-  const IN_HOUSE_KEYWORDS = ['in-house','in house','self-op','self op','self park','self-park'];
-  const HOSPITAL_IN_HOUSE = ['hca','healthone','norton','uofl health','adventhealth','baptist','iu health','ascension','franciscan','indiana university health','u of l health','university of louisville','hca healthone'];
-
-  function classifyPosture(a) {
-    const op = (a.valet_operator || '').toString().toLowerCase().trim();
-    const vr = a.valet_rate;
-    const type = (a.type || '').toLowerCase();
-    const name = (a.name || '').toLowerCase();
-
-    // SOPHI current
-    if (op.includes('sophi')) return 'sophi';
-
-    // No valet signal at all → greenfield
-    const hasValetSignal = !!(vr && String(vr).trim() && String(vr).toUpperCase() !== 'TBD') || !!(op && op !== 'tbd' && op !== 'unknown');
-    if (!hasValetSignal) return 'greenfield';
-
-    // In-house: explicit keyword
-    if (IN_HOUSE_KEYWORDS.some(k => op.includes(k))) return 'inhouse';
-    // Hospitals with operator naming their own health system
-    if (type === 'hospital') {
-      if (HOSPITAL_IN_HOUSE.some(k => op.includes(k) || name.includes(k))) return 'inhouse';
-    }
-
-    // Strong incumbent
-    if (STRONG_OPS.some(k => op.includes(k))) return 'strong';
-    // Weak incumbent
-    if (WEAK_OPS.some(k => op.includes(k))) return 'weak';
-
-    // Has valet signal but no named operator → unknown
-    if (!op || op === 'tbd' || op === 'unknown') return 'unknown';
-
-    // Named operator not in any list → treat as weak (unknown brand, still displaceable)
-    return 'weak';
-  }
-
+  // ---- Derive search text for every account -----------------------------
   accounts.forEach(a => {
-    a._posture = classifyPosture(a);
     a._search = [a.name, a.address, a.valet_operator, a.garage_operator,
-                 a.management, a.gm, a.type].filter(Boolean).join(' ').toLowerCase();
+                 a.management, a.gm, a.type, a.pool_raw, a.tam_class]
+                 .filter(Boolean).join(' ').toLowerCase();
   });
 
   // ---- Populate account type filters dynamically -------------------------
@@ -88,38 +87,27 @@
   });
   const typeFilters = document.getElementById('type-filters');
   const sortedTypes = Object.keys(typeCounts).sort((a, b) => typeCounts[b] - typeCounts[a]);
-  typeFilters.innerHTML = sortedTypes.map(t => {
-    const safeId = 'type-' + t.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-    return `
-      <label class="filter-item">
-        <input type="checkbox" checked data-type="${escHtml(t)}">
-        <span class="filter-label">${escHtml(t)}</span>
-        <span class="filter-count" id="${safeId}">${typeCounts[t]}</span>
-      </label>
-    `;
-  }).join('');
+  typeFilters.innerHTML = sortedTypes.map(t => `
+    <label class="filter-item">
+      <input type="checkbox" checked data-type="${escAttr(t)}">
+      <span class="filter-label">${escHtml(t)}</span>
+      <span class="filter-count">${typeCounts[t]}</span>
+    </label>
+  `).join('');
 
-  // ---- Update filter counts (tier + posture) -----------------------------
-  ['A','B','C','D'].forEach(t => {
-    const c = accounts.filter(a => a.tier === t).length;
-    const el = document.getElementById('count-tier-' + t);
+  // ---- Update pool filter counts ----------------------------------------
+  Object.keys(POOL_LABEL).forEach(pool => {
+    const c = accounts.filter(a => a.pool === pool).length;
+    const el = document.getElementById('count-pool-' + pool);
     if (el) el.textContent = c;
-  });
-  ['sophi','strong','weak','inhouse','unknown','greenfield'].forEach(p => {
-    const c = accounts.filter(a => a._posture === p).length;
-    const el = document.getElementById('count-posture-' + p);
-    if (el) el.textContent = c;
+    // Hide filter row if count is zero in this market (keeps sidebar tight)
+    const cb = document.querySelector(`input[data-pool="${pool}"]`);
+    if (cb && c === 0) cb.closest('.filter-item').style.display = 'none';
   });
 
   // ---- Build map ---------------------------------------------------------
-  const MARKET_CENTERS = {
-    denver: [-104.9903, 39.7392],
-    charlotte: [-80.8431, 35.2271],
-    indianapolis: [-86.1581, 39.7684],
-    phoenix: [-112.0740, 33.4484],
-    cleveland: [-81.6944, 41.4993],
-    louisville: [-85.7585, 38.2527]
-  };
+  const center = market.center || [-98, 39];
+  const zoom = mKey === 'phoenix' ? 9.7 : (mKey === 'denver' ? 10.3 : 11);
 
   const map = new maplibregl.Map({
     container: 'map',
@@ -139,11 +127,10 @@
       },
       layers: [{ id: 'osm', type: 'raster', source: 'osm-raster' }]
     },
-    center: MARKET_CENTERS[mKey],
-    zoom: mKey === 'phoenix' ? 9.7 : 11,
+    center: center,
+    zoom: zoom,
     attributionControl: { compact: true }
   });
-
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 
   // Build markers
@@ -153,9 +140,11 @@
   accounts.forEach((a, idx) => {
     if (!a.lng || !a.lat) return;
     const el = document.createElement('div');
-    const tierCls = 'tier-' + (a.tier || 'd').toLowerCase();
-    const confCls = a.geo_confidence === 'fallback' ? ' fallback' : '';
-    el.className = `map-marker ${tierCls}${confCls}`;
+    const poolCls = 'pool-' + (a.pool || 'micro');
+    const samCls = a.in_sam ? 'in-sam' : 'out-sam';
+    const fbCls = a.geocoded === false ? ' fallback' : '';
+    const v7Cls = a.v7_layer ? ' has-v7' : '';
+    el.className = `map-marker ${poolCls} ${samCls}${fbCls}${v7Cls}`;
     el.dataset.idx = idx;
 
     const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
@@ -169,11 +158,13 @@
 
     el.addEventListener('mouseenter', () => {
       if (activePopup) activePopup.remove();
+      const tamLine = (a.tam && a.tam > 0) ? `$${fmtM(a.tam)} TAM` : '';
+      const v7Line = a.v7_layer ? ` · ${V7_LABEL[a.v7_layer]?.label.replace('Indy v7 — ', 'v7: ') || 'v7'}` : '';
       activePopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 14 })
         .setLngLat([a.lng, a.lat])
         .setHTML(`
           <div class="popup-title">${escHtml(a.name)}</div>
-          <div class="popup-meta">Tier ${a.tier || '—'} · ${escHtml(a.type || '')}</div>
+          <div class="popup-meta">${escHtml(POOL_LABEL[a.pool] || a.pool || '—')} · ${tamLine}${v7Line}</div>
         `)
         .addTo(map);
     });
@@ -194,15 +185,15 @@
     return set;
   }
   function applyFilters() {
-    const tiers = getActiveFilterSet('#tier-filters', 'tier');
+    const poolsIn  = getActiveFilterSet('#pool-filters-in',  'pool');
+    const poolsOut = getActiveFilterSet('#pool-filters-out', 'pool');
     const types = getActiveFilterSet('#type-filters', 'type');
-    const posts = getActiveFilterSet('#posture-filters', 'posture');
     let visible = 0;
     markers.forEach(({ el, account }) => {
-      const show = tiers.has(account.tier) &&
-                   types.has(account.type || 'Unknown') &&
-                   posts.has(account._posture) &&
-                   (!currentSearch || account._search.includes(currentSearch));
+      const poolMatch = account.in_sam ? poolsIn.has(account.pool) : poolsOut.has(account.pool);
+      const typeMatch = types.has(account.type || 'Unknown');
+      const searchMatch = !currentSearch || account._search.includes(currentSearch);
+      const show = poolMatch && typeMatch && searchMatch;
       el.style.display = show ? '' : 'none';
       if (show) visible++;
     });
@@ -226,99 +217,115 @@
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-  function closeModal() {
-    overlay.classList.add('hidden');
-  }
-
-  const POSTURE_LABEL = {
-    sophi: 'SOPHI current operator',
-    strong: 'Strong incumbent',
-    weak: 'Weak incumbent',
-    inhouse: 'In-house / self-op',
-    unknown: 'Operator unknown',
-    greenfield: 'Greenfield — no valet'
-  };
+  function closeModal() { overlay.classList.add('hidden'); }
 
   function openModal(a) {
+    const poolKey = a.pool || 'micro';
+    const poolLabel = POOL_LABEL[poolKey] || poolKey;
+    const tamStr = (a.tam && a.tam > 0) ? '$' + fmtM(a.tam) + ' TAM' : null;
+    const samBadge = a.in_sam
+      ? `<span class="modal-sam-chip in-sam">In SAM</span>`
+      : `<span class="modal-sam-chip out-sam">Out of SAM · ${escHtml(poolLabel)}</span>`;
+
+    // V7 callout
+    const v7 = a.v7_layer && V7_LABEL[a.v7_layer];
+    const v7Block = v7
+      ? `<div class="v7-callout ${v7.cls}">
+           <div class="v7-callout-label">${escHtml(v7.label)}</div>
+           <div class="v7-callout-detail">${escHtml(v7.detail)}</div>
+         </div>`
+      : '';
+
+    // SAM/SOM trajectory bars
+    const trajectoryHtml = renderTrajectory(a);
+
+    // Tier display (still useful as a secondary signal)
     const tierShort = a.tier || '—';
     const tierFull = a.tier_full || 'Unscored';
-    const tierCls = (a.tier || 'd').toLowerCase();
-
-    // Hero: tier badge + TAM + operator status
-    const tamStr = (a.tam && a.tam > 0) ? '$' + fmtM(a.tam) + ' TAM' : null;
-
-    const posture = a._posture;
-    const postureLabel = POSTURE_LABEL[posture];
-    const opDisplay = (a.valet_operator && a.valet_operator !== 'TBD') ? a.valet_operator : null;
-
-    // Signal chips
-    const signals = buildSignals(a);
+    const tierCls = (a.tier || 'd').toString().toLowerCase();
 
     modalContent.innerHTML = `
       <div class="modal-hero">
         <div class="modal-hero-row">
-          <span class="modal-tier ${tierCls}">Tier ${tierShort} · ${escHtml(tierFull.replace(/^[A-D]\s*[—-]\s*/,''))}</span>
-          ${tamStr ? `<span class="modal-tam-chip">${tamStr}</span>` : ''}
-          <span class="modal-posture-chip">
-            <span class="posture-dot ${posture}"></span>
-            ${postureLabel}${opDisplay ? ` · ${escHtml(opDisplay)}` : ''}
+          <span class="modal-pool-chip pool-${poolKey}">
+            <span class="pool-dot pool-${poolKey}-dot"></span>
+            ${escHtml(poolLabel)}
           </span>
+          ${samBadge}
+          ${tamStr ? `<span class="modal-tam-chip">${tamStr}</span>` : ''}
+          ${a.tier ? `<span class="modal-tier ${tierCls}">Tier ${tierShort}</span>` : ''}
         </div>
         <h2 class="modal-title">${escHtml(a.name)}</h2>
         <div class="modal-subtitle">
           <span>${escHtml(a.type || 'Account')}</span>
           ${a.address ? `<span>·</span><span>${escHtml(a.address)}</span>` : ''}
-          ${a.downtown === 'YES' ? `<span>·</span><span>Downtown</span>` : ''}
+          ${a.area === 'YES' ? `<span>·</span><span>Downtown</span>` : ''}
         </div>
-        ${signals ? `<div class="signal-strip">${signals}</div>` : ''}
+        ${v7Block}
       </div>
 
       <div class="modal-body">
 
+        ${a.in_sam ? `
         <div class="modal-group">
-          <div class="modal-group-title">Priority score</div>
-          <div class="modal-fields">
-            <div class="modal-field"><span class="modal-field-lbl">WAS score</span><span class="modal-field-val">${fmtVal(a.was_score, v => Number(v).toFixed(2))}</span></div>
-            <div class="modal-field"><span class="modal-field-lbl">Tier</span><span class="modal-field-val">${escHtml(tierFull)}</span></div>
-            <div class="modal-field"><span class="modal-field-lbl">Fit</span><span class="modal-field-val">${fmtVal(a.fit, v => v + ' / 5')}</span></div>
-            <div class="modal-field"><span class="modal-field-lbl">Size</span><span class="modal-field-val">${fmtVal(a.size_score, v => v + ' / 5')}</span></div>
-            <div class="modal-field"><span class="modal-field-lbl">Ownership base</span><span class="modal-field-val">${fmtVal(a.owner_base, v => v + ' / 5')}</span></div>
-            <div class="modal-field"><span class="modal-field-lbl">Addressability</span><span class="modal-field-val">${fmtVal(a.addressability, v => v + ' / 5')}</span></div>
+          <div class="modal-group-title">SAM contribution &amp; Y1–Y5 trajectory</div>
+          ${trajectoryHtml}
+          <div class="modal-fields modal-fields-tight">
+            <div class="modal-field"><span class="modal-field-lbl">SAM contribution</span><span class="modal-field-val">${fmtVal(a.sam_contrib, v => '$' + fmtM(v))}</span></div>
+            <div class="modal-field"><span class="modal-field-lbl">Curve</span><span class="modal-field-val">${fmtVal(a.curve)}</span></div>
+            <div class="modal-field"><span class="modal-field-lbl">Sign year</span><span class="modal-field-val">${fmtVal(a.sign_yr)}</span></div>
+            <div class="modal-field"><span class="modal-field-lbl">Y5 / TAM</span><span class="modal-field-val">${a.tam ? ((a.y5/a.tam)*100).toFixed(0) + '%' : '—'}</span></div>
           </div>
         </div>
+        ` : `
+        <div class="modal-group">
+          <div class="modal-group-title">Why excluded from SAM</div>
+          <div class="modal-exclusion">${escHtml(samExclusionReason(a))}</div>
+        </div>
+        `}
 
         <div class="modal-group">
-          <div class="modal-group-title">Parking economics</div>
+          <div class="modal-group-title">Parking economics &amp; TAM</div>
           <div class="modal-fields">
             <div class="modal-field"><span class="modal-field-lbl">TAM</span><span class="modal-field-val">${fmtVal(a.tam, v => '$' + fmtM(v))}</span></div>
-            <div class="modal-field"><span class="modal-field-lbl">Y5 revenue</span><span class="modal-field-val">${fmtVal(a.y5_rev, v => '$' + fmtM(v))}</span></div>
+            <div class="modal-field"><span class="modal-field-lbl">TAM class</span><span class="modal-field-val">${fmtVal(a.tam_class)}</span></div>
             <div class="modal-field"><span class="modal-field-lbl">Valet rate</span><span class="modal-field-val">${fmtVal(a.valet_rate, v => '$' + v)}</span></div>
             <div class="modal-field"><span class="modal-field-lbl">Self-park rate</span><span class="modal-field-val">${fmtVal(a.self_park_rate, v => '$' + v)}</span></div>
-            <div class="modal-field"><span class="modal-field-lbl">Rooms / spaces</span><span class="modal-field-val">${fmtVal(a.rooms)}</span></div>
-            <div class="modal-field"><span class="modal-field-lbl">Year-1 revenue</span><span class="modal-field-val">${fmtVal(a.y1_rev, v => '$' + fmtM(v))}</span></div>
+            <div class="modal-field"><span class="modal-field-lbl">Rooms</span><span class="modal-field-val">${fmtVal(a.rooms)}</span></div>
+            <div class="modal-field"><span class="modal-field-lbl">Seats</span><span class="modal-field-val">${fmtVal(a.seats)}</span></div>
+            <div class="modal-field"><span class="modal-field-lbl">Occupancy</span><span class="modal-field-val">${fmtVal(a.occupancy, v => (v <= 1 ? Math.round(v*100) : v) + '%')}</span></div>
+            <div class="modal-field"><span class="modal-field-lbl">Valet conv.</span><span class="modal-field-val">${fmtVal(a.valet_conv, v => (v <= 1 ? (v*100).toFixed(1) : v) + '%')}</span></div>
+            ${a.tam_status ? `<div class="modal-field wide"><span class="modal-field-lbl">TAM status</span><span class="modal-field-val">${escHtml(a.tam_status)}</span></div>` : ''}
+            ${a.tam_notes ? `<div class="modal-field wide"><span class="modal-field-lbl">TAM notes</span><span class="modal-field-val">${escHtml(a.tam_notes)}</span></div>` : ''}
           </div>
         </div>
 
         <div class="modal-group">
-          <div class="modal-group-title">Valet operator &amp; competitive posture</div>
+          <div class="modal-group-title">WAS scoring</div>
           <div class="modal-fields">
-            <div class="modal-field"><span class="modal-field-lbl">Valet operator</span><span class="modal-field-val">${fmtVal(opDisplay)}</span></div>
-            <div class="modal-field"><span class="modal-field-lbl">Posture</span><span class="modal-field-val">${postureLabel}</span></div>
+            <div class="modal-field"><span class="modal-field-lbl">WAS score</span><span class="modal-field-val">${fmtVal(a.was, v => Number(v).toFixed(2))}</span></div>
+            <div class="modal-field"><span class="modal-field-lbl">Tier</span><span class="modal-field-val">${escHtml(tierFull)}</span></div>
+            ${a.was_base != null ? `<div class="modal-field"><span class="modal-field-lbl">WAS base</span><span class="modal-field-val">${Number(a.was_base).toFixed(2)}</span></div>` : ''}
+            ${a.was_boost != null ? `<div class="modal-field"><span class="modal-field-lbl">WAS boost</span><span class="modal-field-val">+${Number(a.was_boost).toFixed(2)}</span></div>` : ''}
+          </div>
+        </div>
+
+        <div class="modal-group">
+          <div class="modal-group-title">Operator &amp; management</div>
+          <div class="modal-fields">
+            <div class="modal-field"><span class="modal-field-lbl">Valet operator</span><span class="modal-field-val">${fmtVal(a.valet_operator)}</span></div>
             <div class="modal-field"><span class="modal-field-lbl">Garage operator</span><span class="modal-field-val">${fmtVal(a.garage_operator)}</span></div>
             <div class="modal-field"><span class="modal-field-lbl">Management</span><span class="modal-field-val">${fmtVal(a.management)}</span></div>
-            ${a.relationship != null ? `<div class="modal-field wide"><span class="modal-field-lbl">Relationship lift</span><span class="modal-field-val">+${Number(a.relationship).toFixed(2)}</span></div>` : ''}
+            <div class="modal-field"><span class="modal-field-lbl">GM</span><span class="modal-field-val">${fmtVal(a.gm)}</span></div>
           </div>
         </div>
 
         <div class="modal-group">
-          <div class="modal-group-title">Contact &amp; sales signals</div>
+          <div class="modal-group-title">Contact</div>
           <div class="modal-fields">
-            <div class="modal-field"><span class="modal-field-lbl">GM</span><span class="modal-field-val">${fmtVal(a.gm)}</span></div>
             <div class="modal-field"><span class="modal-field-lbl">Phone</span><span class="modal-field-val">${a.phone ? `<a href="tel:${escAttr(a.phone)}">${escHtml(a.phone)}</a>` : '<span class="empty">—</span>'}</span></div>
-            <div class="modal-field wide"><span class="modal-field-lbl">Email</span><span class="modal-field-val">${a.email ? `<a href="mailto:${escAttr(a.email)}">${escHtml(a.email)}</a>` : '<span class="empty">—</span>'}</span></div>
+            <div class="modal-field"><span class="modal-field-lbl">Email</span><span class="modal-field-val">${a.email ? `<a href="mailto:${escAttr(a.email)}">${escHtml(a.email)}</a>` : '<span class="empty">—</span>'}</span></div>
             <div class="modal-field wide"><span class="modal-field-lbl">Website</span><span class="modal-field-val">${a.url ? `<a href="${escAttr(a.url)}" target="_blank" rel="noopener">${escHtml(shortUrl(a.url))}</a>` : '<span class="empty">—</span>'}</span></div>
-            ${a.location_notes ? `<div class="modal-field wide"><span class="modal-field-lbl">Location notes</span><span class="modal-field-val">${escHtml(a.location_notes)}</span></div>` : ''}
-            ${a.sourcing_notes ? `<div class="modal-field wide"><span class="modal-field-lbl">Sourcing notes</span><span class="modal-field-val">${escHtml(a.sourcing_notes)}</span></div>` : ''}
           </div>
         </div>
 
@@ -328,17 +335,32 @@
     overlay.classList.remove('hidden');
   }
 
-  function buildSignals(a) {
-    const chips = [];
-    if (a.downtown === 'YES')   chips.push('<span class="signal-chip neutral">Downtown</span>');
-    if (a.relationship)         chips.push(`<span class="signal-chip positive">+${Number(a.relationship).toFixed(1)} relationship</span>`);
-    if (a.fit >= 4)             chips.push('<span class="signal-chip positive">Strong fit</span>');
-    if (a.size_score >= 4)      chips.push('<span class="signal-chip positive">Large size</span>');
-    if (a._posture === 'strong')chips.push('<span class="signal-chip negative">Hard displacement</span>');
-    if (a._posture === 'greenfield') chips.push('<span class="signal-chip positive">Greenfield</span>');
-    if (a.geo_confidence === 'approximate') chips.push('<span class="signal-chip warning">Approximate location</span>');
-    if (a.geo_confidence === 'fallback')    chips.push('<span class="signal-chip warning">Location unverified</span>');
-    return chips.join('');
+  function samExclusionReason(a) {
+    const map = {
+      partnership:   'Partnership / PMC bundled — surface via Preferred or PMC channel rather than direct displacement.',
+      enterprise:    'Enterprise operator (LAZ / SP+ / Towne / Ace / Impark) — multi-property contract, harder to displace single-asset.',
+      extended_stay: 'Extended-stay brand (Home2 / Homewood / Hyatt House / SpringHill / Element) — limited valet upside per asset.',
+      micro:         'Micro account (TAM < $150K) — not worth direct sales motion.',
+    };
+    return map[a.pool] || 'Out of structural SAM.';
+  }
+
+  function renderTrajectory(a) {
+    const years = [a.y1, a.y2, a.y3, a.y4, a.y5].map(v => Number(v) || 0);
+    const max = Math.max(...years, a.tam || 0, 1);
+    return `
+      <div class="trajectory">
+        ${years.map((v, i) => `
+          <div class="trajectory-col">
+            <div class="trajectory-bar-wrap">
+              <div class="trajectory-bar" style="height: ${(v/max)*100}%"></div>
+            </div>
+            <div class="trajectory-val">$${fmtM(v)}</div>
+            <div class="trajectory-lbl">Y${i+1}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
   }
 
   // ---- Sidebar toggle (mobile) -------------------------------------------
@@ -350,9 +372,11 @@
   function fmtM(n) {
     if (n == null) return '—';
     n = Number(n);
+    if (!isFinite(n)) return '—';
     if (n >= 1e9) return (n/1e9).toFixed(2) + 'B';
-    if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+    if (n >= 1e6) return (n/1e6).toFixed(2) + 'M';
     if (n >= 1e3) return (n/1e3).toFixed(0) + 'K';
+    if (n === 0) return '0';
     return String(Math.round(n));
   }
   function fmtVal(v, formatter) {

@@ -47,6 +47,11 @@
     </div>
   </div>
   <div class="header-right">
+    <div class="header-stats" id="header-stats">
+      <div class="header-stat"><span class="hstat-val" id="h-tam">—</span><span class="hstat-lbl">TAM</span></div>
+      <div class="header-stat"><span class="hstat-val" id="h-sam">—</span><span class="hstat-lbl">SAM <span class="hstat-ratio" id="h-sam-ratio"></span></span></div>
+      <div class="header-stat"><span class="hstat-val" id="h-y5">—</span><span class="hstat-lbl">Y5 SOM <span class="hstat-ratio" id="h-y5-ratio"></span></span></div>
+    </div>
     <div class="stat-pill" id="stat-visible">
       <span class="stat-num">0</span>
       <span class="stat-label">visible</span>
@@ -62,38 +67,62 @@
   <div class="sidebar-section summary-section">
     <div class="summary-row">
       <div class="summary-mini"><span class="smini-val" id="m-accounts">—</span><span class="smini-lbl">Accounts</span></div>
-      <div class="summary-mini"><span class="smini-val" id="m-tam">—</span><span class="smini-lbl">TAM</span></div>
-      <div class="summary-mini"><span class="smini-val" id="m-y5som">—</span><span class="smini-lbl">Y5 SOM</span></div>
+      <div class="summary-mini"><span class="smini-val" id="m-insam">—</span><span class="smini-lbl">In SAM</span></div>
+      <div class="summary-mini"><span class="smini-val" id="m-y1som">—</span><span class="smini-lbl">Y1 SOM</span></div>
     </div>
     <div class="state-badge" id="state-badge">—</div>
   </div>
 
   <div class="sidebar-section">
-    <h3>Priority Tier</h3>
-    <div id="tier-filters">
+    <h3>In-SAM Pools</h3>
+    <div id="pool-filters-in">
       <label class="filter-item">
-        <input type="checkbox" checked data-tier="A">
-        <span class="tier-badge a">A</span>
-        <span class="filter-label">Beachhead</span>
-        <span class="filter-count" id="count-tier-A">—</span>
+        <input type="checkbox" checked data-pool="anchor">
+        <span class="pool-dot pool-anchor-dot"></span>
+        <span class="filter-label">Anchors</span>
+        <span class="filter-count" id="count-pool-anchor">—</span>
       </label>
       <label class="filter-item">
-        <input type="checkbox" checked data-tier="B">
-        <span class="tier-badge b">B</span>
-        <span class="filter-label">Core</span>
-        <span class="filter-count" id="count-tier-B">—</span>
+        <input type="checkbox" checked data-pool="cold_sam">
+        <span class="pool-dot pool-cold_sam-dot"></span>
+        <span class="filter-label">Cold SAM</span>
+        <span class="filter-count" id="count-pool-cold_sam">—</span>
       </label>
       <label class="filter-item">
-        <input type="checkbox" checked data-tier="C">
-        <span class="tier-badge c">C</span>
-        <span class="filter-label">Opportunistic</span>
-        <span class="filter-count" id="count-tier-C">—</span>
+        <input type="checkbox" checked data-pool="ma_sam">
+        <span class="pool-dot pool-ma_sam-dot"></span>
+        <span class="filter-label">M&amp;A SAM</span>
+        <span class="filter-count" id="count-pool-ma_sam">—</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <h3>Out-of-SAM Pools</h3>
+    <div id="pool-filters-out">
+      <label class="filter-item">
+        <input type="checkbox" checked data-pool="partnership">
+        <span class="pool-dot pool-partnership-dot"></span>
+        <span class="filter-label">Partnership / PMC</span>
+        <span class="filter-count" id="count-pool-partnership">—</span>
       </label>
       <label class="filter-item">
-        <input type="checkbox" checked data-tier="D">
-        <span class="tier-badge d">D</span>
-        <span class="filter-label">Deprioritized</span>
-        <span class="filter-count" id="count-tier-D">—</span>
+        <input type="checkbox" checked data-pool="enterprise">
+        <span class="pool-dot pool-enterprise-dot"></span>
+        <span class="filter-label">Enterprise operator</span>
+        <span class="filter-count" id="count-pool-enterprise">—</span>
+      </label>
+      <label class="filter-item">
+        <input type="checkbox" checked data-pool="extended_stay">
+        <span class="pool-dot pool-extended_stay-dot"></span>
+        <span class="filter-label">Extended-stay brand</span>
+        <span class="filter-count" id="count-pool-extended_stay">—</span>
+      </label>
+      <label class="filter-item">
+        <input type="checkbox" checked data-pool="micro">
+        <span class="pool-dot pool-micro-dot"></span>
+        <span class="filter-label">Micro (&lt;$150K TAM)</span>
+        <span class="filter-count" id="count-pool-micro">—</span>
       </label>
     </div>
   </div>
@@ -106,57 +135,15 @@
   </div>
 
   <div class="sidebar-section">
-    <h3>Competitive Posture</h3>
-    <div id="posture-filters">
-      <label class="filter-item">
-        <input type="checkbox" checked data-posture="sophi">
-        <span class="posture-dot sophi"></span>
-        <span class="filter-label">SOPHI current</span>
-        <span class="filter-count" id="count-posture-sophi">—</span>
-      </label>
-      <label class="filter-item">
-        <input type="checkbox" checked data-posture="strong">
-        <span class="posture-dot strong"></span>
-        <span class="filter-label">Strong incumbent</span>
-        <span class="filter-count" id="count-posture-strong">—</span>
-      </label>
-      <label class="filter-item">
-        <input type="checkbox" checked data-posture="weak">
-        <span class="posture-dot weak"></span>
-        <span class="filter-label">Weak incumbent</span>
-        <span class="filter-count" id="count-posture-weak">—</span>
-      </label>
-      <label class="filter-item">
-        <input type="checkbox" checked data-posture="inhouse">
-        <span class="posture-dot inhouse"></span>
-        <span class="filter-label">In-house / self-op</span>
-        <span class="filter-count" id="count-posture-inhouse">—</span>
-      </label>
-      <label class="filter-item" id="unknown-op-filter">
-        <input type="checkbox" checked data-posture="unknown">
-        <span class="posture-dot unknown"></span>
-        <span class="filter-label">Unknown operator</span>
-        <span class="filter-count" id="count-posture-unknown">—</span>
-      </label>
-      <label class="filter-item">
-        <input type="checkbox" checked data-posture="greenfield">
-        <span class="posture-dot greenfield"></span>
-        <span class="filter-label">Greenfield (no valet)</span>
-        <span class="filter-count" id="count-posture-greenfield">—</span>
-      </label>
-    </div>
-  </div>
-
-  <div class="sidebar-section">
     <h3>Search</h3>
     <input type="text" id="search-input" placeholder="Name, address, operator, GM...">
   </div>
 
   <div class="sidebar-section">
     <div class="legend-note">
-      <div class="legend-row"><span class="conf-dot v"></span>Verified location</div>
-      <div class="legend-row"><span class="conf-dot a"></span>Approximate (name-matched)</div>
-      <div class="legend-row"><span class="conf-dot f"></span>Market center fallback</div>
+      <div class="legend-row"><span class="legend-swatch in-sam-swatch"></span>In-SAM (vibrant)</div>
+      <div class="legend-row"><span class="legend-swatch out-sam-swatch"></span>Out-of-SAM (muted)</div>
+      <div class="legend-row"><span class="conf-dot f"></span>Geocode fallback (dashed)</div>
     </div>
   </div>
 
