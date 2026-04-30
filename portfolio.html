@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="generator" content="Perplexity Computer">
+<meta name="author" content="Perplexity Computer">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sophi Mobility — Portfolio Financial Rollup (v2/v7)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body class="landing portfolio-page">
+
+<header class="landing-header">
+  <div class="landing-header-inner">
+    <div class="logo-lockup">
+      <a href="./index.html" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Sophi">
+          <rect width="32" height="32" rx="7" fill="#673AB7"/>
+          <path d="M8 10h5v12H8V10zm7 5h5v7h-5v-7z" fill="white"/>
+          <circle cx="25" cy="10" r="2.5" fill="#0F9D58"/>
+        </svg>
+        <div>
+          <div class="logo-title">Sophi Mobility</div>
+          <div class="logo-sub">Portfolio Financial Rollup · 6 Markets</div>
+        </div>
+      </a>
+    </div>
+    <div class="landing-header-right">
+      <a href="./index.html" class="text-link">Markets</a>
+      <a href="./index.html#methodology" class="text-link">Methodology</a>
+    </div>
+  </div>
+</header>
+
+<main class="landing-main">
+
+  <section class="hero" style="padding-bottom:24px;">
+    <div class="hero-eyebrow">PORTFOLIO ROLLUP · Y1–Y5 SOM · v2/v7</div>
+    <h1 class="hero-title" style="font-size:42px;line-height:1.15;">
+      $181M five-year SOM.<br>$52.6M Y5 run-rate.
+    </h1>
+    <p class="hero-lede">
+      Consolidated financial projection across all 6 markets. Every number rolls up from
+      the same per-account Y1–Y5 trajectories shown in the market views — no separate model.
+    </p>
+
+    <div class="hero-stats" id="rollup-hero-stats"><!-- JS --></div>
+  </section>
+
+  <!-- ===== Y1-Y5 Stacked Revenue Chart ===== -->
+  <section class="rollup-section">
+    <div class="rollup-section-head">
+      <h2 class="section-title" style="margin-bottom:4px;">Y1–Y5 Revenue Ramp</h2>
+      <p class="section-sub">Stacked by market · in-SAM SOM only · $M</p>
+    </div>
+
+    <div class="ramp-chart" id="ramp-chart"><!-- JS --></div>
+
+    <div class="ramp-legend" id="ramp-legend"><!-- JS --></div>
+  </section>
+
+  <!-- ===== Cumulative + Pool Mix two-up ===== -->
+  <section class="rollup-twoup">
+    <div class="rollup-card">
+      <div class="rollup-section-head">
+        <h2 class="section-title">5-Year Cumulative</h2>
+        <p class="section-sub">Total SOM through Y5 · by market</p>
+      </div>
+      <div class="cumulative-list" id="cumulative-list"><!-- JS --></div>
+    </div>
+
+    <div class="rollup-card">
+      <div class="rollup-section-head">
+        <h2 class="section-title">Y5 SOM by Pool</h2>
+        <p class="section-sub">In-SAM pools only · out-of-SAM = $0 by methodology</p>
+      </div>
+      <div class="pool-mix" id="pool-mix"><!-- JS --></div>
+    </div>
+  </section>
+
+  <!-- ===== Comparison Table ===== -->
+  <section class="rollup-section">
+    <div class="rollup-section-head">
+      <h2 class="section-title">Market-by-Market Detail</h2>
+      <p class="section-sub">Click a market to open its map view</p>
+    </div>
+
+    <div class="rollup-table-wrap">
+      <table class="rollup-table" id="rollup-table">
+        <thead>
+          <tr>
+            <th class="t-left">Market</th>
+            <th>State</th>
+            <th class="t-right">TAM</th>
+            <th class="t-right">SAM</th>
+            <th class="t-right">Y1 SOM</th>
+            <th class="t-right">Y5 SOM</th>
+            <th class="t-right">5-yr Total</th>
+            <th class="t-right">Accts</th>
+            <th class="t-right">In SAM</th>
+          </tr>
+        </thead>
+        <tbody><!-- JS --></tbody>
+        <tfoot><!-- JS --></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== Footnotes ===== -->
+  <section class="rollup-section rollup-notes">
+    <h2 class="section-title">Notes & Reconciliation</h2>
+    <ul class="notes-list">
+      <li><strong>Source of truth.</strong> Every dollar above rolls up from the same per-account Y1–Y5 records used by the market maps. No separate forecast model.</li>
+      <li><strong>Out-of-SAM = $0 SOM.</strong> Partnership, Enterprise, Extended-stay, and Micro accounts contribute to TAM but not to SOM under v2 — so they don't appear in this rollup. That's the methodology, not missing data.</li>
+      <li><strong>M&amp;A SAM (Indy v7).</strong> The 5 Elite-managed steakhouses contribute $0 in Y1, then full TAM ($0.95M/yr portfolio) Y2–Y5 — the absorption assumption.</li>
+      <li><strong>Charlotte &amp; Denver SAM caps.</strong> SAM is capped at 50% of market TAM. Charlotte and Denver hit the cap; the other four markets sit naturally below.</li>
+    </ul>
+  </section>
+
+  <footer class="landing-footer">
+    <div>© 2026 Sophi Mobility</div>
+    <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener noreferrer" class="footer-attribution">Created with Perplexity Computer</a>
+  </footer>
+
+</main>
+
+<script src="./data.js"></script>
+<script src="./portfolio.js"></script>
+
+</body>
+</html>
